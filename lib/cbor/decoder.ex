@@ -1,5 +1,6 @@
 defmodule Cbor.Decoder do
   @unsigned_integer Cbor.Types.unsigned_integer()
+  @negative_integer Cbor.Types.negative_integer()
   @string Cbor.Types.string()
   @array Cbor.Types.array()
   @byte_string Cbor.Types.byte_string()
@@ -19,6 +20,8 @@ defmodule Cbor.Decoder do
     case value do
       << @unsigned_integer, bits::bits >> ->
         read_unsigned_integer(bits)
+      << @negative_integer, bits::bits >> ->
+        read_negative_integer(bits)
       << @string, bits::bits >> ->
         read_string(bits)
       << @byte_string, bits::bits >> ->
@@ -86,4 +89,22 @@ defmodule Cbor.Decoder do
         {value, rest}
     end
   end
+
+  def read_negative_integer(value) do
+    case value do
+      << 27::size(5), unsigned_value::size(64), rest::bits >> ->
+        {unsiged_to_negative(unsigned_value), rest}
+      << 26::size(5), unsigned_value::size(32), rest::bits >> ->
+        {unsiged_to_negative(unsigned_value), rest}
+      << 25::size(5), unsigned_value::size(16), rest::bits >> ->
+        {unsiged_to_negative(unsigned_value), rest}
+      << 24::size(5), unsigned_value::size(8), rest::bits >> ->
+        {unsiged_to_negative(unsigned_value), rest}
+      << <<unsigned_value::size(5)>>::bitstring, rest::bits >> ->
+        {unsiged_to_negative(unsigned_value), rest}
+    end
+  end
+
+  defp unsiged_to_negative(unsined_value), do: (unsined_value + 1) * -1
+
 end

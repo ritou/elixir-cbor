@@ -3,8 +3,10 @@ defmodule Cbor.Encoder do
 
   def encode(value) do
       case value do
-        value when is_integer(value) ->
+        value when is_integer(value) and value >= 0 ->
           concat(Types.unsigned_integer, encode_unsigned_int(value))
+        value when is_integer(value) ->
+          concat(Types.negative_integer, encode_negative_int(value))
         value when is_atom(value) ->
           concat(Types.string, encode_string(value))
         value when is_binary(value) ->
@@ -54,15 +56,31 @@ defmodule Cbor.Encoder do
   def encode_unsigned_int(value) do
     case value do
       value when value in 0..23 ->
-        <<value::5>>
-      value when value in 24..0x100 ->
+        <<value::size(5)>>
+      value when value in 24..0x0ff ->
         <<24::size(5), value>>
-      value when value in 0x101..0x10000 ->
+      value when value in 0x100..0x0ffff ->
         <<25::size(5), value::size(16)>>
-      value when value in 0x10001..0x100000000 ->
+      value when value in 0x10000..0x0ffffffff ->
         <<26::size(5), value::size(32)>>
-      value when value in 0x100000001..0x10000000000000000 ->
+      value when value in 0x100000000..0x0ffffffffffffffff ->
         <<27::size(5), value::size(64)>>
+    end
+  end
+
+  def encode_negative_int(value) do
+    unsigned_value = (value * -1) - 1
+    case unsigned_value do
+      unsigned_value when unsigned_value in 0..23 ->
+        <<(unsigned_value + 32)::5>>
+      unsigned_value when unsigned_value in 24..0x0ff ->
+        <<56::size(5), unsigned_value>>
+      unsigned_value when unsigned_value in 0x100..0x0ffff ->
+        <<57::size(5), unsigned_value::size(16)>>
+      unsigned_value when unsigned_value in 0x10000..0x0ffffffff ->
+        <<58::size(5), unsigned_value::size(32)>>
+      unsigned_value when unsigned_value in 0x100000000..0x0ffffffffffffffff ->
+        <<59::size(5), unsigned_value::size(64)>>
     end
   end
 end
